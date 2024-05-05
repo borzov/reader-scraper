@@ -1,53 +1,43 @@
-# ReaderScraper
-## Simplifying Web Content Acquisition
+# ReaderScraper: Enhanced Web Content Aggregation Tool
 
 ### Introduction
-**ReaderScraper** is a Python script tailored to simplify and automate the extraction of web content through the Jina AI Reader service (https://jina.ai/reader/). The service is useful especially when feeding web information into Large Language Models (LLMs), where the goal is grounding. Traditional methods, such as direct webpage scraping, face challenges like blocks or the complexity arising from handling raw HTML which includes unnecessary markups and scripts. By leveraging the Reader API, the script fetches the core content from given URLs and formats it into clean, LLM-friendly text; this streamlined text is free of extraneous elements, thus ensuring high-quality input for agent and RAG systems.
+ReaderScraper is a powerful Python script designed to simplify and automate the extraction of web content through the Jina AI Reader API. This tool processes URLs from a provided text file and efficiently organizes content into domain-specific folders. Moreover, it automatically generates a summarizing file for each domain, highlighting the script's ability to manage and compile information seamlessly.
 
 ### Features
--  **Automated URL Processing:** Takes a list of URLs and fetches cleaned-up content.
--  **Summarization Mode:** Optionally combines all fetched contents into a single file for easier processing or review.
--  **User-friendly Configuration:** Easy to set up with minimal requirements and straightforward usage instructions.
+-  **Domain-Specific Organization:** Automatically saves content into respective domain-named folders.
+-  **Automatic Summary File Creation:** Generates a summary text file within each domain folder to aggregate content details.
+-  **Timestamp Naming Convention:** Enhances file management by prefixing filenames with a timestamp, ensuring uniqueness across executions.
+-  **Batch Processing with Virtual Environment:** Includes a bash script (`run.sh`) to handle virtual environment setup, script execution, and environment teardown, streamlining the entire operation.
 
-### How It Works
-1. **Reading URLs:** URLs should be listed in the `url.txt` file line by line. The script reads these URLs sequentially.
-2. **Content Fetching:** For each URL, it constructs a request to the Reader API and retrieves the processed content.
-3. **Content Saving:** Each piece of content is saved individually in a structured format. Optionally, all content can be summarized in a single file `!summarized.txt`.
-4. **Summarization:** If enabled, this mode compiles the contents of all processed files into one, each section demarcated clearly for easy access.
+### Usage
+1. **Prepare URL List:**
+   - Create a `url.txt` file in the project’s root directory.
+   - Add URLs to the file, each on a new line.
 
-### Operating Modes
-The script can be run in two modes:
--  **Default mode:** Processes URLs and saves each output into separate files.
--  **Summarization mode (`--summarize` flag):** Processes URLs and additionally, compiles all outputs into a single file.
+2. **Running the Script:**
+   - Directly via Python:
+     ```
+     python3 main.py
+     ```
+   - Using the provided bash script to manage virtual environments:
+     ```
+     ./run.sh [--summarize] [optional: folder name]
+     ```
+   The bash script `run.sh` helps in setting up a Python virtual environment, running the script, and then cleaning up the environment. It passes additional parameters directly to the Python script.
 
-### Running the Script
-To ensure smooth operation, it is recommended to run the script in a virtual environment. Here’s a step-by-step guide:
-1. **Setup Virtual Environment** (assuming you have Python installed):
-    ```sh
-    python -m venv reader_scraper_env
-    source reader_scraper_env/bin/activate  # For Unix/macOS
-    reader_scraper_env\Scripts\activate     # For Windows
-    ```
-2. **Install Required Packages:**
-    ```sh
-    pip install requests tqdm
-    ```
-3. **Running ReaderScraper:**
-    ```sh
-    python ReaderScraper.py [--summarize]
-    ```
+### Changelog for Version 0.2
+-  **Domain-Specific Folders:** Content is now saved into folders named after the domains of the URLs processed.
+-  **Summary Files:** Each domain folder gets a summary file named with a prefix to clearly denote it is a summarized document.
+-  **Timestamp in Filenames:** Introduced a timestamp prefix in filenames to prevent overwrites and to track when content was pulled.
+-  **Script Runner (`run.sh`):** Added a bash script for easy virtual environment management and script execution.
 
-### Preparing the URL List
--  Create or ensure the presence of a `url.txt` file in the same directory as the script.
--  Enter each URL on a new line without any additional text or prefixes.
--  Ensure URLs are valid and accessible to avoid errors during processing.
+### Virtual Environment and Script Runner (run.sh)
+The `run.sh` bash script facilitates a smoother operation by automating the environment setup and script execution process. Here’s how it works:
+-  **Creates a virtual environment** named `env` if it doesn't exist.
+-  **Activates the virtual environment**, runs the Python script with any provided command-line arguments, and then deactivates the environment.
 
-### Conclusion
-**ReaderScraper** stands out by handling web content fetching and simplification tasks efficiently, providing a robust tool for integrating web-derived content into LLM workflows. Whether it's for enhancing data sets for training or model feeding, ReaderScraper ensures that the content it processes complies with high-quality standards needed for advanced computational models.
-
-### License
-This script is released under the MIT License.
+This tool is perfect for users seeking an efficient way to handle multiple web contents for aggregation and summarization without manually managing dependencies and virtual environments.
 
 ---
 
-This `README.md` provides an exhaustive guide to setting up, running, and utilizing **ReaderScraper**. It clarifies the importance of the Reader API in relation to LLMs and gives users all the needed information to start leveraging web content effectively in their models or systems.
+Feel free to copy and use this updated `README.md` text directly for the project documentation for ReaderScraper v0.2. This version reflects both technical enhancements and usability improvements while providing comprehensive instructions and support for new users.

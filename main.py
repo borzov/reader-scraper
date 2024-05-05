@@ -1,115 +1,123 @@
 """
-ReaderScraper: Web Scraping and Summarization Tool
---------------------------------------------------
-ReaderScraper is designed to facilitate the extraction of web content via the Jina AI Reader service (https://jina.ai/reader/).
-It automates the handling of a list of URLs for parsing and can optionally aggregate the content of all processed pages into a single file.
-This single file is particularly useful for bulk upload into Large Language Models (LLMs) for further processing or analysis.
+ReaderScraper: Automated Domain-wise Content Aggregation from Web URLs
+-----------------------------------------------------------------------
+Author: Maxim Borzov
+
+Description:
+This script automates fetching web content using the Jina AI Reader API. It processes URLs from a file, saves contents into domain-specific folders,
+and generates a summarizing file in each folder. This script supports optional command to summarize content across domains.
 
 Usage:
-1. Create or ensure 'url.txt' exists in the same directory as this script with web URLs listed line by line.
-2. Run the script. Use `--summarize` option if you want to aggregate all output content into a single file.
+-    To process URLs from 'url.txt' and save to domain-specific folders:
+  $ python3 main.py
 
-Example:
-  python ReaderScraper.py --summarize
-
-Author: Maxim Borzov
-GitHub Profile: https://github.com/borzov
+-    To create a summary file for all contents in a specific folder:
+  $ python3 main.py --summarize [optional: folder name]
 """
 
 import os
 import sys
 import argparse
+import time
+from urllib.parse import urlparse
+from tqdm import tqdm
+
 
 def check_and_install_packages():
-    """Check and install required packages"""
-    required_packages = ['requests', 'tqdm']
-    missing_packages = []
-    for package in required_packages:
-        try:
-            __import__(package)
-        except ImportError:
-            missing_packages.append(package)
-    if missing_packages:
-        print("The following packages are required but not installed:")
-        print(", ".join(missing_packages))
-        print("Please install them using the command:")
-        print("pip install " + " ".join(missing_packages))
-        sys.exit(1)
+    """Ensure all required packages are installed."""
+    try:
+        __import__('requests')
+        __import__('tqdm')
+    except ImportError as e:
+        print(f"Missing required package: {e.name}")
+        sys.exit("Please install it using the command: pip install " + e.name)
 
-def prepare_urls_file(filename):
-    """Ensure that URL file exists or create it with instructions"""
-    if not os.path.exists(filename):
-        print(f"No URL file found. Creating a sample file: {filename}")
-        with open(filename, 'w') as file:
-            file.write("# Enter each URL on a new line followed by a newline.\n")
-        print(f"Please populate the {filename} file with URLs.")
-        sys.exit(1)
 
 def process_url(reader_url, site_url):
-    """Fetch processed content from Reader for a given site URL"""
-    import requests  # Import locally to allow package check before import
+    """Fetch content from Reader API for a given site URL."""
+    import requests
     response = requests.get(f'{reader_url}{site_url}')
-    if response.status_code == 200:
-        return response.text
-    else:
-        return None
+    return response.text if response.status_code == 200 else None
+
 
 def extract_title(content):
-    """Extract title from content"""
+    """Extract title from content based on its first line."""
     first_line = content.split('\n')[0]
-    if first_line.startswith('Title: '):
-        return first_line[7:]
-    return "Unknown Title"
+    return first_line[7:].strip() if first_line.startswith('Title: ') else "Unknown Title"
 
-def summarize_contents(output_dir):
-    """Generate a summary file of all contents"""
-    summary_file_path = os.path.join(output_dir, "!summarized.txt")
+
+def summarize_contents(output_dir, domain):
+    """Create a domain summary file in the specific output directory."""
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    
+    summary_file_name = f"!{domain}_summarize.txt"
+    summary_file_path = os.path.join(output_dir, summary_file_name)
     with open(summary_file_path, 'w') as summary_file:
-        summary_file.write("The following blocks contain web page content, organized separately. Do not use <content> tags in your responses.\n\n")
+        summary_file.write(f"Content summaries for {domain} are provided below:\n\n")
+        for filename in sorted(os.listdir(output_dir)):
+            if filename.endswith(".txt") and not filename.startswith("!"):
+                path = os.path.join(output_dir, filename)
+                with open(path, 'r') as content_file:
+                    content = content_file.read()
+                summary_file.write(f"{filename} content is:\n<content>{content}</content>\n\n")
 
-        for file_name in os.listdir(output_dir):
-            if file_name.endswith(".txt") and not file_name.startswith("!"):
-                with open(os.path.join(output_dir, file_name), 'r') as content_file:
-                    file_content = content_file.read()
-                    summary_file.write(f"{file_name} content is:\n<content>{file_content}</content>\n\n")
 
 def main():
-    """Main function to orchestrate the crawling process with optional content summarization"""
-    parser = argparse.ArgumentParser(description="Web scraper and content aggregator for use with Jina AI Reader service")
-    parser.add_argument("--summarize", help="Create a summary file for all contents", action="store_true")
+    parser = argparse.ArgumentParser(description="Web content fetcher and summarizer with domain-specific organization.")
+    parser.add_argument('--summarize', action='store_true', help="Create a summary file for all contents in a specified folder.")
     args = parser.parse_args()
 
     check_and_install_packages()
 
     reader_url = "https://r.jina.ai/"
     urls_filename = "url.txt"
-    output_dir = "scrape"
-    
-    prepare_urls_file(urls_filename)
+    base_path = "scrape"
+    processed_domains = set()
+    start_time = time.time()
 
-    import requests
-    from tqdm import tqdm
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(urls_filename):
+        print(f"URL list file '{urls_filename}' not found.")
+        return
 
     with open(urls_filename, 'r') as file:
-        urls = [line.strip() for line in file if not line.strip().startswith("#") and line.strip()]
+        urls = [line.strip() for line in file if line.strip() and not line.strip().startswith('#')]
 
-    for index, url in enumerate(tqdm(urls, desc="Processing URLs")):
-        if url:
-            content = process_url(reader_url, url)
-            if content:
-                title = extract_title(content)
-                filename = f"{index + 1} - {title}.txt"
-                file_path = os.path.join(output_dir, filename)
-                with open(file_path, 'w') as output_file:
-                    output_file.write(content)
-            else:
-                print(f"Failed to retrieve content for URL: {url}")
+    successful_requests = 0
+    failed_requests = 0
+    total_content_length = 0
 
-    if args.summarize:
-        summarize_contents(output_dir)
+    for url in tqdm(urls, desc="Processing URLs"):
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        domain_path = os.path.join(base_path, domain)
+        if not os.path.exists(domain_path):
+            os.makedirs(domain_path)
+            print(f"Created directory `{domain_path}` for domain {domain}.")
+
+        content = process_url(reader_url, url)
+        if content:
+            successful_requests += 1
+            title = extract_title(content)
+            timestamp = int(time.time())
+            filename = f"{timestamp}_{title}.txt"
+            filepath = os.path.join(domain_path, filename)
+            with open(filepath, 'w') as f:
+                f.write(content)
+            total_content_length += len(content)
+        else:
+            failed_requests += 1
+
+        processed_domains.add(domain)
+
+    for domain in processed_domains:
+        domain_path = os.path.join(base_path, domain)
+        summarize_contents(domain_path, domain)
+
+    time_elapsed = time.time() - start_time
+    print(f"\nProcessed {len(urls)} URLs in {time_elapsed:.2f} seconds.")
+    print(f"Successful requests: {successful_requests}, Failed requests: {failed_requests}")
+    print(f"Total content length: {total_content_length} characters")
 
 if __name__ == "__main__":
     main()
