@@ -8,7 +8,10 @@ fi
 # Step 2: Activate the virtual environment
 source env/bin/activate
 
-# Step 3: Run the Python script with any passed arguments
+# Step 3: Install required packages
+pip install -r requirements.txt
+
+# Step 4: Run the Python script with any passed arguments
 python main.py "$@"
 
 # Deactivate the virtual environment if necessary

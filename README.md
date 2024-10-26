@@ -1,43 +1,48 @@
-# ReaderScraper: Enhanced Web Content Aggregation Tool
+# ReaderScraper: Инструмент для агрегации веб-контента
 
-### Introduction
-ReaderScraper is a powerful Python script designed to simplify and automate the extraction of web content through the Jina AI Reader API. This tool processes URLs from a provided text file and efficiently organizes content into domain-specific folders. Moreover, it automatically generates a summarizing file for each domain, highlighting the script's ability to manage and compile information seamlessly.
+ReaderScraper — это скрипт на Python, который помогает извлекать веб-контент через Jina AI Reader API. Он обрабатывает URL из текстового файла и организует контент в папки по доменам. Также автоматически создается файл с резюме для каждого домена.
 
-### Features
--  **Domain-Specific Organization:** Automatically saves content into respective domain-named folders.
--  **Automatic Summary File Creation:** Generates a summary text file within each domain folder to aggregate content details.
--  **Timestamp Naming Convention:** Enhances file management by prefixing filenames with a timestamp, ensuring uniqueness across executions.
--  **Batch Processing with Virtual Environment:** Includes a bash script (`run.sh`) to handle virtual environment setup, script execution, and environment teardown, streamlining the entire operation.
+## Возможности
 
-### Usage
-1. **Prepare URL List:**
-   - Create a `url.txt` file in the project’s root directory.
-   - Add URLs to the file, each on a new line.
+-  Организация контента по доменам.
+-  Автоматическое создание файла с резюме.
+-  Именование файлов с временной меткой для уникальности.
+-  Пакетная обработка с использованием виртуальной среды.
 
-2. **Running the Script:**
-   - Directly via Python:
-     ```
+## Использование
+
+1. Подготовьте файл `url.txt` в корневом каталоге проекта и добавьте URL, каждый с новой строки.
+2. Убедитесь, что у вас установлен Python 3.6 или выше.
+3. Запустите скрипт:
+   - Через Python:
+     ```bash
      python3 main.py
      ```
-   - Using the provided bash script to manage virtual environments:
+   - С помощью bash-скрипта для управления виртуальной средой:
+     ```bash
+     ./run.sh [--summarize] [опционально: имя папки]
      ```
-     ./run.sh [--summarize] [optional: folder name]
-     ```
-   The bash script `run.sh` helps in setting up a Python virtual environment, running the script, and then cleaning up the environment. It passes additional parameters directly to the Python script.
 
-### Changelog for Version 0.2
--  **Domain-Specific Folders:** Content is now saved into folders named after the domains of the URLs processed.
--  **Summary Files:** Each domain folder gets a summary file named with a prefix to clearly denote it is a summarized document.
--  **Timestamp in Filenames:** Introduced a timestamp prefix in filenames to prevent overwrites and to track when content was pulled.
--  **Script Runner (`run.sh`):** Added a bash script for easy virtual environment management and script execution.
+## Установка зависимостей
 
-### Virtual Environment and Script Runner (run.sh)
-The `run.sh` bash script facilitates a smoother operation by automating the environment setup and script execution process. Here’s how it works:
--  **Creates a virtual environment** named `env` if it doesn't exist.
--  **Activates the virtual environment**, runs the Python script with any provided command-line arguments, and then deactivates the environment.
+Скрипт использует виртуальную среду для управления зависимостями. Все необходимые пакеты перечислены в `requirements.txt`. Bash-скрипт `run.sh` автоматически установит их при первом запуске.
 
-This tool is perfect for users seeking an efficient way to handle multiple web contents for aggregation and summarization without manually managing dependencies and virtual environments.
+## Изменения в версии 0.3
 
----
+-  Добавлено логирование для улучшенной диагностики и отслеживания ошибок.
+-  Улучшена обработка ошибок при сетевых запросах и работе с файлами.
+-  Реализована асинхронная обработка HTTP-запросов для повышения производительности.
+-  Обновлены комментарии и документация на русском языке для лучшей доступности.
 
-Feel free to copy and use this updated `README.md` text directly for the project documentation for ReaderScraper v0.2. This version reflects both technical enhancements and usability improvements while providing comprehensive instructions and support for new users.
+## Изменения в версии 0.2
+
+-  Контент сохраняется в папки по доменам.
+-  Добавлены файлы с резюме.
+-  Введено именование файлов с временной меткой.
+-  Добавлен bash-скрипт для управления виртуальной средой.
+
+## Виртуальная среда и запуск скрипта
+
+Bash-скрипт `run.sh` автоматизирует настройку и выполнение скрипта в виртуальной среде. Он создает виртуальную среду, если она не существует, активирует её, устанавливает необходимые зависимости из `requirements.txt`, запускает скрипт и затем деактивирует среду.
+
+Этот инструмент подходит для пользователей, которым нужно эффективно обрабатывать и суммировать веб-контент без ручного управления зависимостями.

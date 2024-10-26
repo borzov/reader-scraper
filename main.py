@@ -1,74 +1,73 @@
 """
-ReaderScraper: Automated Domain-wise Content Aggregation from Web URLs
+ReaderScraper: Автоматизированная агрегация контента по доменам из веб-URL
 -----------------------------------------------------------------------
-Author: Maxim Borzov
+Автор: Максим Борзов
 
-Description:
-This script automates fetching web content using the Jina AI Reader API. It processes URLs from a file, saves contents into domain-specific folders,
-and generates a summarizing file in each folder. This script supports optional command to summarize content across domains.
+Описание:
+Этот скрипт автоматизирует получение веб-контента с использованием Jina AI Reader API.
+Он обрабатывает URL из файла, сохраняет контент в папки, специфичные для доменов,
+и генерирует файл с резюме в каждой папке. Скрипт поддерживает опциональную команду для
+суммирования контента по доменам.
 
-Usage:
--    To process URLs from 'url.txt' and save to domain-specific folders:
+Использование:
+-   Чтобы обработать URL из 'url.txt' и сохранить в папки, специфичные для доменов:
   $ python3 main.py
 
--    To create a summary file for all contents in a specific folder:
-  $ python3 main.py --summarize [optional: folder name]
+-   Чтобы создать файл с резюме для всего контента в определенной папке:
+  $ python3 main.py --summarize [опционально: имя папки]
 """
 
 import os
 import sys
 import argparse
 import time
+import logging
 from urllib.parse import urlparse
 from tqdm import tqdm
+import asyncio
+import aiohttp
 
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def check_and_install_packages():
-    """Ensure all required packages are installed."""
+async def fetch_content(session, reader_url, site_url):
+    """Асинхронное получение контента с помощью Reader API для заданного URL."""
     try:
-        __import__('requests')
-        __import__('tqdm')
-    except ImportError as e:
-        print(f"Missing required package: {e.name}")
-        sys.exit("Please install it using the command: pip install " + e.name)
-
-
-def process_url(reader_url, site_url):
-    """Fetch content from Reader API for a given site URL."""
-    import requests
-    response = requests.get(f'{reader_url}{site_url}')
-    return response.text if response.status_code == 200 else None
-
+        async with session.get(f'{reader_url}{site_url}') as response:
+            if response.status == 200:
+                return await response.text()
+            else:
+                logging.error(f"Ошибка при получении {site_url}: {response.status}")
+                return None
+    except Exception as e:
+        logging.error(f"Исключение при получении {site_url}: {e}")
+        return None
 
 def extract_title(content):
-    """Extract title from content based on its first line."""
+    """Извлечение заголовка из контента на основе первой строки."""
     first_line = content.split('\n')[0]
     return first_line[7:].strip() if first_line.startswith('Title: ') else "Unknown Title"
 
-
 def summarize_contents(output_dir, domain):
-    """Create a domain summary file in the specific output directory."""
+    """Создание файла с резюме для домена в указанной директории."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
-    
+
     summary_file_name = f"!{domain}_summarize.txt"
     summary_file_path = os.path.join(output_dir, summary_file_name)
     with open(summary_file_path, 'w') as summary_file:
-        summary_file.write(f"Content summaries for {domain} are provided below:\n\n")
+        summary_file.write(f"Сводка контента для {domain}:\n\n")
         for filename in sorted(os.listdir(output_dir)):
             if filename.endswith(".txt") and not filename.startswith("!"):
                 path = os.path.join(output_dir, filename)
                 with open(path, 'r') as content_file:
                     content = content_file.read()
-                summary_file.write(f"{filename} content is:\n<content>{content}</content>\n\n")
+                summary_file.write(f"Контент файла {filename}:\n<content>{content}</content>\n\n")
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Web content fetcher and summarizer with domain-specific organization.")
-    parser.add_argument('--summarize', action='store_true', help="Create a summary file for all contents in a specified folder.")
+async def main():
+    parser = argparse.ArgumentParser(description="Получение и суммирование веб-контента с организацией по доменам.")
+    parser.add_argument('--summarize', action='store_true', help="Создать файл с резюме для всех содержимых в указанной папке.")
     args = parser.parse_args()
-
-    check_and_install_packages()
 
     reader_url = "https://r.jina.ai/"
     urls_filename = "url.txt"
@@ -77,7 +76,7 @@ def main():
     start_time = time.time()
 
     if not os.path.exists(urls_filename):
-        print(f"URL list file '{urls_filename}' not found.")
+        logging.error(f"Файл со списком URL '{urls_filename}' не найден.")
         return
 
     with open(urls_filename, 'r') as file:
@@ -87,37 +86,41 @@ def main():
     failed_requests = 0
     total_content_length = 0
 
-    for url in tqdm(urls, desc="Processing URLs"):
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc
-        domain_path = os.path.join(base_path, domain)
-        if not os.path.exists(domain_path):
-            os.makedirs(domain_path)
-            print(f"Created directory `{domain_path}` for domain {domain}.")
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for url in urls:
+            tasks.append(fetch_content(session, reader_url, url))
 
-        content = process_url(reader_url, url)
-        if content:
-            successful_requests += 1
-            title = extract_title(content)
-            timestamp = int(time.time())
-            filename = f"{timestamp}_{title}.txt"
-            filepath = os.path.join(domain_path, filename)
-            with open(filepath, 'w') as f:
-                f.write(content)
-            total_content_length += len(content)
-        else:
-            failed_requests += 1
+        for url, content in zip(urls, await asyncio.gather(*tasks)):
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc
+            domain_path = os.path.join(base_path, domain)
+            if not os.path.exists(domain_path):
+                os.makedirs(domain_path)
+                logging.info(f"Создана директория `{domain_path}` для домена {domain}.")
 
-        processed_domains.add(domain)
+            if content:
+                successful_requests += 1
+                title = extract_title(content)
+                timestamp = int(time.time())
+                filename = f"{timestamp}_{title}.txt"
+                filepath = os.path.join(domain_path, filename)
+                with open(filepath, 'w') as f:
+                    f.write(content)
+                total_content_length += len(content)
+            else:
+                failed_requests += 1
+
+            processed_domains.add(domain)
 
     for domain in processed_domains:
         domain_path = os.path.join(base_path, domain)
         summarize_contents(domain_path, domain)
 
     time_elapsed = time.time() - start_time
-    print(f"\nProcessed {len(urls)} URLs in {time_elapsed:.2f} seconds.")
-    print(f"Successful requests: {successful_requests}, Failed requests: {failed_requests}")
-    print(f"Total content length: {total_content_length} characters")
+    logging.info(f"Обработано {len(urls)} URL за {time_elapsed:.2f} секунд.")
+    logging.info(f"Успешные запросы: {successful_requests}, Неудачные запросы: {failed_requests}")
+    logging.info(f"Общая длина контента: {total_content_length} символов")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
